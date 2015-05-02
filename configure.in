@@ -12,6 +12,7 @@ AC_PROG_RANLIB
 AC_USE_SYSTEM_EXTENSIONS
 LT_INIT
 AC_PROG_LIBTOOL(libtool)
+AC_DISABLE_SHARED
 
 AC_DEFINE(DEFAULT_DIFF_PROGRAM, "diff",
   [Name of "diff" program, unless overridden.])

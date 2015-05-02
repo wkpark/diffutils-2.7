@@ -56,7 +56,7 @@ libdiff_la_SOURCES = \
 	diff.c
 
 libdiff_la_LDFLAGS = -version-info 0:0:0
-libdiff_la_CFLAGS = -DLIBDIFF
+libdiff_la_CFLAGS = -DPHP
 libdiff_la_LIBADD = @ALLOCA@ @LIBOBJS@
 libdiff_la_DEPENDENCIES = $(libdiff_la_LIBADD)
 

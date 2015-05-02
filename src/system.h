@@ -243,6 +243,10 @@ extern int errno;
 #define initialize_main(argcp, argvp)
 #endif
 
+#ifndef NULL_DEVICE
+# define NULL_DEVICE "/dev/null"
+#endif
+
 /* Do struct stat *S, *T describe the same file?  Answer -1 if unknown.  */
 #ifndef same_file
 #define same_file(s,t) ((s)->st_ino==(t)->st_ino && (s)->st_dev==(t)->st_dev)

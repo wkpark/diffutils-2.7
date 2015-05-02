@@ -200,7 +200,7 @@ static void try_help PARAMS((char const *));
 static void undotlines PARAMS((FILE *, int, int, int));
 static void usage PARAMS((void));
 
-static char const diff_program[] = DIFF_PROGRAM;
+static char const diff_program[] = DEFAULT_DIFF_PROGRAM;
 
 static struct option const longopts[] =
 {

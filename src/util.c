@@ -71,18 +71,6 @@ pfatal_with_name (text)
   exit (2);
 }
 
-/* Print an error message from the format-string FORMAT
-   with args ARG1 and ARG2.  */
-
-void
-error (format, arg, arg1)
-     char const *format, *arg, *arg1;
-{
-  fprintf (stderr, "%s: ", program_name);
-  fprintf (stderr, format, arg, arg1);
-  fprintf (stderr, "\n");
-}
-
 /* Print an error message containing the string TEXT, then exit.  */
 
 void
@@ -682,42 +670,6 @@ analyze_hunk (hunk, first0, last0, first1, last1, deletes, inserts)
   *inserts = show_to;
 }
 
-/* malloc a block of memory, with fatal error message if we can't do it. */
-
-VOID *
-xmalloc (size)
-     size_t size;
-{
-  register VOID *value;
-
-  if (size == 0)
-    size = 1;
-
-  value = (VOID *) malloc (size);
-
-  if (!value)
-    fatal ("memory exhausted");
-  return value;
-}
-
-/* realloc a block of memory, with fatal error message if we can't do it. */
-
-VOID *
-xrealloc (old, size)
-     VOID *old;
-     size_t size;
-{
-  register VOID *value;
-
-  if (size == 0)
-    size = 1;
-
-  value = (VOID *) realloc (old, size);
-
-  if (!value)
-    fatal ("memory exhausted");
-  return value;
-}
 
 /* Concatenate three strings, returning a newly malloc'd string.  */
 

@@ -227,7 +227,11 @@ static struct option const longopts[] =
 };
 
 int
+#ifdef PHP
+diffMain (argc, argv)
+#else
 main (argc, argv)
+#endif
      int argc;
      char *argv[];
 {
@@ -400,6 +404,7 @@ main (argc, argv)
 	  ignore_some_changes = 1;
 	  break;
 
+#ifndef PHP
 	case 'l':
 	  /* Pass the output through `pr' to paginate it.  */
 	  paginate_flag = 1;
@@ -412,6 +417,7 @@ main (argc, argv)
 	  signal (SIGCHLD, SIG_DFL);
 #endif
 	  break;
+#endif
 
 	case 'L':
 	  /* Specify file labels for `-c' output headers.  */
@@ -473,6 +479,7 @@ main (argc, argv)
 	  dir_start_file = optarg;
 	  break;
 
+#ifndef PHP
 	case 't':
 	  /* Expand tabs to spaces in the output so that it preserves
 	     the alignment of the input files.  */
@@ -485,6 +492,7 @@ main (argc, argv)
 	     in the input line without changing the characters in it.  */
 	  tab_align_flag = 1;
 	  break;
+#endif
 
 	case 'u':
 	  /* Output the context diff in unidiff format.  */

@@ -37,8 +37,8 @@ the Free Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.  */
 #define DEFAULT_EDITOR_PROGRAM "ed"
 #endif
 
-extern char version_string[];
-static char const *program_name;
+extern char const version_string[];
+char *program_name;
 static char const *diffbin = DIFF_PROGRAM;
 static char const *edbin = DEFAULT_EDITOR_PROGRAM;
 static char const **diffargv;

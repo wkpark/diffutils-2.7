@@ -42,7 +42,7 @@ static void check_stdout PARAMS((void));
 static void usage PARAMS((void));
 
 /* Name under which this program was invoked.  */
-char const *program_name;
+char *program_name;
 
 /* Filenames of the compared files.  */
 static char const *file[2];

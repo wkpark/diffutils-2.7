@@ -173,7 +173,7 @@ static int finalwrite;
 /* If nonzero, output a merged file.  */
 static int merge;
 
-static char *program_name;
+char *program_name;
 
 static VOID *xmalloc PARAMS((size_t));
 static VOID *xrealloc PARAMS((VOID *, size_t));

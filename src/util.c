@@ -23,6 +23,18 @@ the Free Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.  */
 #define PR_PROGRAM "/bin/pr"
 #endif
 
+#ifdef PHP
+#define PUTS(str) php_printf("%s", str)
+#else
+#define PUTS(str) fputs(str, outfile)
+#endif
+
+#ifdef PHP
+#define PRINTF(fmt, args...) php_printf(fmt, ## args)
+#else
+#define PRINTF(fmt, args...) fprintf(outfile, fmt, ## args)
+#endif
+
 /* Queue up one-line messages to be printed at the end,
    when -l is specified.  Each message is recorded with a `struct msg'.  */
 
@@ -111,8 +123,8 @@ message5 (format, arg1, arg2, arg3, arg4)
   else
     {
       if (sdiff_help_sdiff)
-	putchar (' ');
-      printf (format, arg1, arg2, arg3, arg4);
+	PUTS (" ");
+      PRINTF (format, arg1, arg2, arg3, arg4);
     }
 }
 
@@ -124,7 +136,7 @@ print_message_queue ()
   struct msg *m;
 
   for (m = msg_chain; m; m = m->next)
-    printf (m->format, m->arg1, m->arg2, m->arg3, m->arg4);
+    PRINTF (m->format, m->arg1, m->arg2, m->arg3, m->arg4);
 }
 
 /* Call before outputting the results of comparing files NAME0 and NAME1
@@ -230,7 +242,7 @@ begin_output ()
       /* If handling multiple files (because scanning a directory),
 	 print which files the following output is about.  */
       if (current_depth > 0)
-	printf ("%s\n", name);
+	PRINTF ("%s\n", name);
     }
 
   free (name);
@@ -462,13 +474,14 @@ print_1_line (line_flag, line)
   if (line_flag && *line_flag)
     {
       flag_format = tab_align_flag ? "%s\t" : "%s ";
-      fprintf (out, flag_format, line_flag);
+      PRINTF (flag_format, line_flag);
     }
 
   output_1_line (text, limit, flag_format, line_flag);
 
-  if ((!line_flag || line_flag[0]) && limit[-1] != '\n')
-    fprintf (out, "\n\\ No newline at end of file\n");
+  if ((!line_flag || line_flag[0]) && limit[-1] != '\n') {
+    PRINTF ("\n\\ No newline at end of file\n");
+  }
 }
 
 /* Output a line from TEXT up to LIMIT.  Without -t, output verbatim.
@@ -480,9 +493,25 @@ void
 output_1_line (text, limit, flag_format, line_flag)
      char const *text, *limit, *flag_format, *line_flag;
 {
-  if (!tab_expand_flag)
+
+  if (!tab_expand_flag) {
+#if OLD
     fwrite (text, sizeof (char), limit - text, outfile);
-  else
+#elif VERY_SLOW
+    char *str;
+    str = xmalloc (limit - text + 1);
+    snprintf (str, limit - text + 1, "%s", text);
+    free (str);
+#else
+    char str;
+    str = *limit; // save
+    *(char *)limit = 0;
+    PUTS (text);
+    *(char *)limit = str; // restore
+#endif
+    return;
+  }
+
     {
       register FILE *out = outfile;
       register unsigned char c;
@@ -505,7 +534,7 @@ output_1_line (text, limit, flag_format, line_flag)
 	  case '\r':
 	    putc (c, out);
 	    if (flag_format && t < limit && *t != '\n')
-	      fprintf (out, flag_format, line_flag);
+	      PRINTF (flag_format, line_flag);
 	    column = 0;
 	    break;
 
@@ -581,9 +610,9 @@ print_number_range (sepchar, file, a, b)
      In this case, we should print the line number before the range,
      which is B.  */
   if (trans_b > trans_a)
-    fprintf (outfile, "%d%c%d", trans_a, sepchar, trans_b);
+    PRINTF ("%d%c%d", trans_a, sepchar, trans_b);
   else
-    fprintf (outfile, "%d", trans_b);
+    PRINTF ("%d", trans_b);
 }
 
 /* Look at a hunk of edit script and report the range of lines in each file

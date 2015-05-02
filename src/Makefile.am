@@ -19,24 +19,31 @@
 
 bin_PROGRAMS = cmp diff diff3 sdiff
 
+noinst_LIBRARIES = libdiffutils.a
+
+EXTRA_DIST = alloca.c memchr.c waitpid.c
+
 noinst_HEADERS = diff.h system.h
 
-AM_CPPFLAGS =
+LDADD = libdiffutils.a
+diff_LDADD = $(LDADD)
 
-cmp_SOURCES = cmp.c cmpbuf.c error.c \
-	version.c \
-	getopt.c getopt1.c xmalloc.c
-diff3_SOURCES = diff3.c \
-	version.c \
-	getopt.c getopt1.c
-sdiff_SOURCES = sdiff.c \
-	version.c \
-	getopt.c getopt1.c
-diff_SOURCES = \
-	diff.c analyze.c context.c dir.c ed.c ifdef.c io.c \
+cmp_SOURCES = cmp.c error.c version.c
+diff3_SOURCES = diff3.c version.c
+sdiff_SOURCES = sdiff.c version.c
+diff_SOURCES = diff.c \
+	analyze.c context.c dir.c ed.c ifdef.c io.c \
 	normal.c side.c util.c \
-	version.c \
-	cmpbuf.c fnmatch.o getopt.c getopt1.c regex.c
+	version.c
+
+libdiffutils_a_SOURCES = \
+	error.c fnmatch.c \
+	cmpbuf.c \
+	regex.c xmalloc.c \
+	getopt1.c getopt.c
+
+libdiffutils_a_LIBADD = @ALLOCA@ @LIBOBJS@
+libdiffutils_a_DEPENDENCIES = $(libdiffutils_a_LIBADD)
 
 MAINTAINERCLEANFILES = $(srcdir)/version.c
 

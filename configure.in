@@ -8,6 +8,7 @@ AC_ARG_PROGRAM
 AC_PROG_CC
 AC_PROG_CPP
 AC_PROG_INSTALL
+AC_PROG_RANLIB
 
 AC_DEFINE(DEFAULT_DIFF_PROGRAM, "diff",
   [Name of "diff" program, unless overridden.])

@@ -28,7 +28,7 @@ noinst_HEADERS = diff.h system.h
 LDADD = libdiffutils.a
 diff_LDADD = $(LDADD)
 
-cmp_SOURCES = cmp.c error.c version.c
+cmp_SOURCES = cmp.c version.c
 diff3_SOURCES = diff3.c version.c
 sdiff_SOURCES = sdiff.c version.c
 diff_SOURCES = diff.c \

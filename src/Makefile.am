@@ -44,6 +44,22 @@ libdiffutils_la_LDFLAGS = -version-info 0:0:0
 libdiffutils_la_LIBADD = @ALLOCA@ @LIBOBJS@
 libdiffutils_la_DEPENDENCIES = $(libdiffutils_la_LIBADD)
 
+lib_LTLIBRARIES += libdiff.la
+libdiff_la_SOURCES = \
+	error.c fnmatch.c \
+	cmpbuf.c \
+	regex.c xmalloc.c \
+	getopt1.c getopt.c \
+	analyze.c context.c dir.c ed.c ifdef.c io.c \
+	normal.c side.c util.c \
+	version.c \
+	diff.c
+
+libdiff_la_LDFLAGS = -version-info 0:0:0
+libdiff_la_CFLAGS = -DLIBDIFF
+libdiff_la_LIBADD = @ALLOCA@ @LIBOBJS@
+libdiff_la_DEPENDENCIES = $(libdiff_la_LIBADD)
+
 MAINTAINERCLEANFILES = $(srcdir)/version.c
 
 $(srcdir)/version.c: $(top_srcdir)/configure.in

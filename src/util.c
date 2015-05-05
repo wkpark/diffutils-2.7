@@ -1,27 +1,27 @@
 /* Support routines for GNU DIFF.
-   Copyright (C) 1988, 1989, 1992, 1993, 1994 Free Software Foundation, Inc.
+   Copyright 1988, 89, 92, 93, 94, 95, 1998 Free Software Foundation, Inc.
 
-This file is part of GNU DIFF.
+   This file is part of GNU DIFF.
 
-GNU DIFF is free software; you can redistribute it and/or modify
-it under the terms of the GNU General Public License as published by
-the Free Software Foundation; either version 2, or (at your option)
-any later version.
+   GNU DIFF is free software; you can redistribute it and/or modify
+   it under the terms of the GNU General Public License as published by
+   the Free Software Foundation; either version 2, or (at your option)
+   any later version.
 
-GNU DIFF is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-GNU General Public License for more details.
+   GNU DIFF is distributed in the hope that it will be useful,
+   but WITHOUT ANY WARRANTY; without even the implied warranty of
+   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+   GNU General Public License for more details.
 
-You should have received a copy of the GNU General Public License
-along with GNU DIFF; see the file COPYING.  If not, write to
-the Free Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.  */
+   You should have received a copy of the GNU General Public License
+   along with this program; see the file COPYING.
+   If not, write to the Free Software Foundation, 
+   59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.  */
 
 #include "diff.h"
+#include "quotesys.h"
 
-#ifndef PR_PROGRAM
-#define PR_PROGRAM "/bin/pr"
-#endif
+char const pr_program[] = PR_PROGRAM;
 
 /* Queue up one-line messages to be printed at the end,
    when -l is specified.  Each message is recorded with a `struct msg'.  */
@@ -29,11 +29,7 @@ the Free Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.  */
 struct msg
 {
   struct msg *next;
-  char const *format;
-  char const *arg1;
-  char const *arg2;
-  char const *arg3;
-  char const *arg4;
+  char args[1]; /* Format + 4 args, each '\0' terminated, concatenated.  */
 };
 
 /* Head of the chain of queues messages.  */
@@ -51,10 +47,7 @@ void
 perror_with_name (text)
      char const *text;
 {
-  int e = errno;
-  fprintf (stderr, "%s: ", program_name);
-  errno = e;
-  perror (text);
+  error (0, errno, "%s", text);
 }
 
 /* Use when a system call returns non-zero status and that is fatal.  */
@@ -65,66 +58,67 @@ pfatal_with_name (text)
 {
   int e = errno;
   print_message_queue ();
-  fprintf (stderr, "%s: ", program_name);
-  errno = e;
-  perror (text);
-  exit (2);
+  error (2, e, "%s", text);
+  abort ();
 }
 
-/* Print an error message from the format-string FORMAT
-   with args ARG1 and ARG2.  */
+/* Print an error message containing MSGID, then exit.  */
 
 void
-error (format, arg, arg1)
-     char const *format, *arg, *arg1;
-{
-  fprintf (stderr, "%s: ", program_name);
-  fprintf (stderr, format, arg, arg1);
-  fprintf (stderr, "\n");
-}
-
-/* Print an error message containing the string TEXT, then exit.  */
-
-void
-fatal (m)
-     char const *m;
+fatal (msgid)
+     char const *msgid;
 {
   print_message_queue ();
-  error ("%s", m, 0);
-  exit (2);
+  error (2, 0, "%s", _(msgid));
+  abort ();
 }
 
 /* Like printf, except if -l in effect then save the message and print later.
-   This is used for things like "binary files differ" and "Only in ...".  */
+   This is used for things like "Only in ...".  */
 
 void
-message (format, arg1, arg2)
-     char const *format, *arg1, *arg2;
+message (format_msgid, arg1, arg2)
+     char const *format_msgid, *arg1, *arg2;
 {
-  message5 (format, arg1, arg2, 0, 0);
+  message5 (format_msgid, arg1, arg2, 0, 0);
 }
 
 void
-message5 (format, arg1, arg2, arg3, arg4)
-     char const *format, *arg1, *arg2, *arg3, *arg4;
+message5 (format_msgid, arg1, arg2, arg3, arg4)
+     char const *format_msgid, *arg1, *arg2, *arg3, *arg4;
 {
   if (paginate_flag)
     {
-      struct msg *new = (struct msg *) xmalloc (sizeof (struct msg));
-      new->format = format;
-      new->arg1 = concat (arg1, "", "");
-      new->arg2 = concat (arg2, "", "");
-      new->arg3 = arg3 ? concat (arg3, "", "") : 0;
-      new->arg4 = arg4 ? concat (arg4, "", "") : 0;
-      new->next = 0;
+      char *p;
+      char const *arg[5];
+      int i;
+      size_t size[5];
+      size_t total_size = sizeof (struct msg);
+      struct msg *new;
+
+      arg[0] = format_msgid;
+      arg[1] = arg1;
+      arg[2] = arg2;
+      arg[3] = arg3 ? arg3 : "";
+      arg[4] = arg4 ? arg4 : "";
+
+      for (i = 0;  i < 5;  i++)
+	total_size += size[i] = strlen (arg[i]) + 1;
+
+      new = (struct msg *) xmalloc (total_size);
+
+      for (i = 0, p = new->args;  i < 5;  p += size[i++])
+	memcpy (p, arg[i], size[i]);
+
       *msg_chain_end = new;
+      new->next = 0;
       msg_chain_end = &new->next;
     }
   else
     {
       if (sdiff_help_sdiff)
 	putchar (' ');
-      printf (format, arg1, arg2, arg3, arg4);
+      printf (_(format_msgid), arg1, arg2, arg3, arg4);
     }
 }
 
@@ -133,10 +127,20 @@ message5 (format, arg1, arg2, arg3, arg4)
 void
 print_message_queue ()
 {
-  struct msg *m;
+  char const *arg[5];
+  int i;
+  struct msg *m = msg_chain;
 
-  for (m = msg_chain; m; m = m->next)
-    printf (m->format, m->arg1, m->arg2, m->arg3, m->arg4);
+  while (m)
+    {
+      struct msg *next = m->next;
+      arg[0] = m->args;
+      for (i = 0;  i < 4;  i++)
+	arg[i + 1] = arg[i] + strlen (arg[i]) + 1;
+      printf (_(arg[0]), arg[1], arg[2], arg[3], arg[4]);
+      free (m);
+      m = next;
+    }
 }
 
 /* Call before outputting the results of comparing files NAME0 and NAME1
@@ -148,16 +152,16 @@ print_message_queue ()
 
 static char const *current_name0;
 static char const *current_name1;
-static int current_depth;
+static int currently_recursive;
 
 void
-setup_output (name0, name1, depth)
+setup_output (name0, name1, recursive)
      char const *name0, *name1;
-     int depth;
+     int recursive;
 {
   current_name0 = name0;
   current_name1 = name1;
-  current_depth = depth;
+  currently_recursive = recursive;
   outfile = 0;
 }
 
@@ -176,61 +180,69 @@ begin_output ()
   /* Construct the header of this piece of diff.  */
   name = xmalloc (strlen (current_name0) + strlen (current_name1)
 		  + strlen (switch_string) + 7);
-  /* Posix.2 section 4.17.6.1.1 specifies this format.  But there is a
-     bug in the first printing (IEEE Std 1003.2-1992 p 251 l 3304):
-     it says that we must print only the last component of the pathnames.
-     This requirement is silly and does not match historical practice.  */
+  /* Posix.2 section 4.17.6.1.1 specifies this format.  But there are some
+     bugs in the first printing (IEEE Std 1003.2-1992 p 251 l 3304):
+     it says that we must print only the last component of the pathnames,
+     and it requires two spaces after "diff" if there are no options.
+     These requirements are silly and do not match historical practice.  */
   sprintf (name, "diff%s %s %s", switch_string, current_name0, current_name1);
 
   if (paginate_flag)
     {
+      if (fflush (stdout) != 0)
+	pfatal_with_name (_("write failed"));
+
       /* Make OUTFILE a pipe to a subsidiary `pr'.  */
-
+      {
 #if HAVE_FORK
-      int pipes[2];
+	int pipes[2];
+	char const *not_found = _(": not found\n");
 
-      if (pipe (pipes) != 0)
-	pfatal_with_name ("pipe");
+	if (pipe (pipes) != 0)
+	  pfatal_with_name ("pipe");
 
-      fflush (stdout);
+	pr_pid = vfork ();
+	if (pr_pid < 0)
+	  pfatal_with_name ("fork");
 
-      pr_pid = vfork ();
-      if (pr_pid < 0)
-	pfatal_with_name ("vfork");
+	if (pr_pid == 0)
+	  {
+	    close (pipes[1]);
+	    if (pipes[0] != STDIN_FILENO)
+	      {
+		if (dup2 (pipes[0], STDIN_FILENO) < 0)
+		  pfatal_with_name ("dup2");
+		close (pipes[0]);
+	      }
 
-      if (pr_pid == 0)
-	{
-	  close (pipes[1]);
-	  if (pipes[0] != STDIN_FILENO)
-	    {
-	      if (dup2 (pipes[0], STDIN_FILENO) < 0)
-		pfatal_with_name ("dup2");
-	      close (pipes[0]);
-	    }
-
-	  execl (PR_PROGRAM, PR_PROGRAM, "-f", "-h", name, 0);
-	  pfatal_with_name (PR_PROGRAM);
-	}
-      else
-	{
-	  close (pipes[0]);
-	  outfile = fdopen (pipes[1], "w");
-	  if (!outfile)
-	    pfatal_with_name ("fdopen");
-	}
+	    execl (pr_program, pr_program, "-f", "-h", name, 0);
+	    /* Avoid stdio, because the parent process's buffers are inherited.
+	       Also, avoid gettext since it may modify the parent buffers.  */
+	    write (STDERR_FILENO, pr_program, strlen (pr_program));
+	    write (STDERR_FILENO, not_found, strlen (not_found));
+	    _exit (1);
+	  }
+	else
+	  {
+	    close (pipes[0]);
+	    outfile = fdopen (pipes[1], "w");
+	    if (!outfile)
+	      pfatal_with_name ("fdopen");
+	  }
 #else /* ! HAVE_FORK */
-      char *command = xmalloc (4 * strlen (name) + strlen (PR_PROGRAM) + 10);
-      char *p;
-      char const *a = name;
-      sprintf (command, "%s -f -h ", PR_PROGRAM);
-      p = command + strlen (command);
-      SYSTEM_QUOTE_ARG (p, a);
-      *p = 0;
-      outfile = popen (command, "w");
-      if (!outfile)
-	pfatal_with_name (command);
-      free (command);
+	char *command = xmalloc (sizeof (pr_program) - 1 + 7
+				 + quote_system_arg ((char *) 0, name) + 1);
+	char *p;
+	sprintf (command, "%s -f -h ", pr_program);
+	p = command + sizeof (pr_program) - 1 + 7;
+	p += quote_system_arg (p, name);
+	*p = 0;
+	outfile = popen (command, "w");
+	if (!outfile)
+	  pfatal_with_name (command);
+	free (command);
 #endif /* ! HAVE_FORK */
+      }
     }
   else
     {
@@ -241,7 +253,7 @@ begin_output ()
 
       /* If handling multiple files (because scanning a directory),
 	 print which files the following output is about.  */
-      if (current_depth > 0)
+      if (currently_recursive)
 	printf ("%s\n", name);
     }
 
@@ -273,17 +285,17 @@ finish_output ()
     {
       int wstatus;
       if (ferror (outfile))
-	fatal ("write error");
+	fatal ("write failed");
 #if ! HAVE_FORK
       wstatus = pclose (outfile);
 #else /* HAVE_FORK */
       if (fclose (outfile) != 0)
-	pfatal_with_name ("write error");
+	pfatal_with_name (_("write failed"));
       if (waitpid (pr_pid, &wstatus, 0) < 0)
 	pfatal_with_name ("waitpid");
 #endif /* HAVE_FORK */
       if (wstatus != 0)
-	fatal ("subsidiary pr failed");
+	fatal ("subsidiary program failed");
     }
 
   outfile = 0;
@@ -359,14 +371,14 @@ line_cmp (s1, s2)
 		     character in both sides and try again.  */
 		  if (c2 == ' ' && c1 != '\n'
 		      && (unsigned char const *) s1 + 1 < t1
-		      && ISSPACE(t1[-2]))
+		      && ISSPACE (t1[-2]))
 		    {
 		      --t1;
 		      continue;
 		    }
 		  if (c1 == ' ' && c2 != '\n'
 		      && (unsigned char const *) s2 + 1 < t2
-		      && ISSPACE(t2[-2]))
+		      && ISSPACE (t2[-2]))
 		    {
 		      --t2;
 		      continue;
@@ -379,9 +391,9 @@ line_cmp (s1, s2)
 	  if (ignore_case_flag)
 	    {
 	      if (ISUPPER (c1))
-		c1 = tolower (c1);
+		c1 = _tolower (c1);
 	      if (ISUPPER (c2))
-		c2 = tolower (c2);
+		c2 = _tolower (c2);
 	    }
 
 	  if (c1 != c2)
@@ -391,7 +403,7 @@ line_cmp (s1, s2)
 	return 0;
     }
 
-  return (1);
+  return 1;
 }
 
 /* Find the consecutive changes at the start of the script START.
@@ -480,7 +492,7 @@ print_1_line (line_flag, line)
   output_1_line (text, limit, flag_format, line_flag);
 
   if ((!line_flag || line_flag[0]) && limit[-1] != '\n')
-    fprintf (out, "\n\\ No newline at end of file\n");
+    fprintf (out, "\n\\ %s\n", _("No newline at end of file"));
 }
 
 /* Output a line from TEXT up to LIMIT.  Without -t, output verbatim.
@@ -617,10 +629,16 @@ analyze_hunk (hunk, first0, last0, first1, last1, deletes, inserts)
      int *first0, *last0, *first1, *last1;
      int *deletes, *inserts;
 {
+  struct change *next;
   int l0, l1, show_from, show_to;
   int i;
-  int trivial = ignore_blank_lines_flag || ignore_regexp_list;
-  struct change *next;
+  int trivial = ignore_blank_lines_flag || ignore_regexp.fastmap;
+  int trivial_length = ignore_blank_lines_flag - 1;
+    /* If 0, ignore zero-length lines;
+       if -1, do not ignore any lines just because of their length.  */
+
+  char const * const *linbuf0 = files[0].linbuf;  /* Help the compiler.  */
+  char const * const *linbuf1 = files[1].linbuf;
 
   show_from = show_to = 0;
 
@@ -636,36 +654,24 @@ analyze_hunk (hunk, first0, last0, first1, last1, deletes, inserts)
       show_to += next->inserted;
 
       for (i = next->line0; i <= l0 && trivial; i++)
-	if (!ignore_blank_lines_flag || files[0].linbuf[i][0] != '\n')
-	  {
-	    struct regexp_list *r;
-	    char const *line = files[0].linbuf[i];
-	    int len = files[0].linbuf[i + 1] - line;
-
-	    for (r = ignore_regexp_list; r; r = r->next)
-	      if (0 <= re_search (&r->buf, line, len, 0, len, 0))
-		break;	/* Found a match.  Ignore this line.  */
-	    /* If we got all the way through the regexp list without
-	       finding a match, then it's nontrivial.  */
-	    if (!r)
-	      trivial = 0;
-	  }
+	{
+	  char const *line = linbuf0[i];
+	  int len = linbuf0[i + 1] - line - 1;
+	  if (len != trivial_length
+	      && (! ignore_regexp.fastmap
+		  || re_search (&ignore_regexp, line, len, 0, len, 0) < 0))
+	    trivial = 0;
+	}
 
       for (i = next->line1; i <= l1 && trivial; i++)
-	if (!ignore_blank_lines_flag || files[1].linbuf[i][0] != '\n')
-	  {
-	    struct regexp_list *r;
-	    char const *line = files[1].linbuf[i];
-	    int len = files[1].linbuf[i + 1] - line;
-
-	    for (r = ignore_regexp_list; r; r = r->next)
-	      if (0 <= re_search (&r->buf, line, len, 0, len, 0))
-		break;	/* Found a match.  Ignore this line.  */
-	    /* If we got all the way through the regexp list without
-	       finding a match, then it's nontrivial.  */
-	    if (!r)
-	      trivial = 0;
-	  }
+	{
+	  char const *line = linbuf1[i];
+	  int len = linbuf1[i + 1] - line - 1;
+	  if (len != trivial_length
+	      && (! ignore_regexp.fastmap
+		  || re_search (&ignore_regexp, line, len, 0, len, 0) < 0))
+	    trivial = 0;
+	}
     }
   while ((next = next->link) != 0);
 
@@ -682,51 +688,13 @@ analyze_hunk (hunk, first0, last0, first1, last1, deletes, inserts)
   *inserts = show_to;
 }
 
-/* malloc a block of memory, with fatal error message if we can't do it. */
-
-VOID *
-xmalloc (size)
-     size_t size;
-{
-  register VOID *value;
-
-  if (size == 0)
-    size = 1;
-
-  value = (VOID *) malloc (size);
-
-  if (!value)
-    fatal ("memory exhausted");
-  return value;
-}
-
-/* realloc a block of memory, with fatal error message if we can't do it. */
-
-VOID *
-xrealloc (old, size)
-     VOID *old;
-     size_t size;
-{
-  register VOID *value;
-
-  if (size == 0)
-    size = 1;
-
-  value = (VOID *) realloc (old, size);
-
-  if (!value)
-    fatal ("memory exhausted");
-  return value;
-}
-
 /* Concatenate three strings, returning a newly malloc'd string.  */
 
 char *
 concat (s1, s2, s3)
      char const *s1, *s2, *s3;
 {
-  size_t len = strlen (s1) + strlen (s2) + strlen (s3);
-  char *new = xmalloc (len + 1);
+  char *new = xmalloc (strlen (s1) + strlen (s2) + strlen (s3) + 1);
   sprintf (new, "%s%s%s", s1, s2, s3);
   return new;
 }

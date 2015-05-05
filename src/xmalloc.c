@@ -1,5 +1,5 @@
 /* xmalloc.c -- malloc with out of memory checking
-   Copyright (C) 1990, 1991, 1993 Free Software Foundation, Inc.
+   Copyright (C) 1990, 91, 92, 93, 94 Free Software Foundation, Inc.
 
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -35,11 +35,45 @@ VOID *realloc ();
 void free ();
 #endif
 
-#if __STDC__ && defined (HAVE_VPRINTF)
-void error (int, int, char const *, ...);
+/* This is for other GNU distributions with internationalized messages.
+   The GNU C Library itself does not yet support such messages.  */
+#if HAVE_LIBINTL_H
+# include <libintl.h>
+#else
+# define gettext(msgid) (msgid)
+#endif
+
+#ifndef EXIT_FAILURE
+#define EXIT_FAILURE 1
+#endif
+
+/* Exit value when the requested amount of memory is not available.
+   The caller may set it to some other value.  */
+int xmalloc_exit_failure = EXIT_FAILURE;
+
+#if __STDC__ && (HAVE_VPRINTF || HAVE_DOPRNT)
+void error (int, int, const char *, ...);
 #else
 void error ();
 #endif
+
+#if __STDC__
+static VOID *fixup_null_alloc (size_t);
+#endif
+
+static VOID *
+fixup_null_alloc (n)
+     size_t n;
+{
+  VOID *p;
+
+  p = 0;
+  if (n == 0)
+    p = malloc ((size_t) 1);
+  if (p == 0)
+    error (xmalloc_exit_failure, 0, gettext ("Memory exhausted"));
+  return p;
+}
 
 /* Allocate N bytes of memory dynamically, with error checking.  */
 
@@ -51,15 +85,13 @@ xmalloc (n)
 
   p = malloc (n);
   if (p == 0)
-    /* Must exit with 2 for `cmp'.  */
-    error (2, 0, "memory exhausted");
+    p = fixup_null_alloc (n);
   return p;
 }
 
 /* Change the size of an allocated block of memory P to N bytes,
    with error checking.
-   If P is NULL, run xmalloc.
-   If N is 0, run free and return NULL.  */
+   If P is NULL, run xmalloc.  */
 
 VOID *
 xrealloc (p, n)
@@ -68,14 +100,8 @@ xrealloc (p, n)
 {
   if (p == 0)
     return xmalloc (n);
-  if (n == 0)
-    {
-      free (p);
-      return 0;
-    }
   p = realloc (p, n);
   if (p == 0)
-    /* Must exit with 2 for `cmp'.  */
-    error (2, 0, "memory exhausted");
+    p = fixup_null_alloc (n);
   return p;
 }

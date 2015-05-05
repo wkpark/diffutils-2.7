@@ -1,48 +1,54 @@
-/* cmp -- compare two files.
-   Copyright (C) 1990, 1991, 1992, 1993, 1994 Free Software Foundation, Inc.
+/* cmp -- compare two files.  */
 
-   This program is free software; you can redistribute it and/or modify
+#include "system.h"
+
+static char const copyright_string[] =
+   "Copyright 1990, 91,92,93,94,95,96, 1998 Free Software Foundation, Inc.";
+
+/* This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
    the Free Software Foundation; either version 2, or (at your option)
    any later version.
 
    This program is distributed in the hope that it will be useful,
    but WITHOUT ANY WARRANTY; without even the implied warranty of
-   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-   GNU General Public License for more details.
+   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+   See the GNU General Public License for more details.
 
    You should have received a copy of the GNU General Public License
-   along with this program; if not, write to the Free Software
-   Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.  */
+   along with this program; see the file COPYING.
+   If not, write to the Free Software Foundation,
+   59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.  */
 
-/* Written by Torbjorn Granlund and David MacKenzie. */
+static char const authorship_msgid[] =
+  "Written by Torbjorn Granlund and David MacKenzie.";
 
-#include "system.h"
 #include <stdio.h>
 #include "getopt.h"
 #include "cmpbuf.h"
 
+extern char const free_software_msgid[];
 extern char const version_string[];
 
-#if __STDC__ && defined (HAVE_VPRINTF)
-void error (int, int, char const *, ...);
+#if __STDC__ && (HAVE_VPRINTF || HAVE_DOPRNT)
+void error (int, int, char const *, ...) __attribute__((format (printf, 3, 4)));
 #else
 void error ();
 #endif
 VOID *xmalloc PARAMS((size_t));
+extern int xmalloc_exit_failure;
 
 static int cmp PARAMS((void));
 static off_t file_position PARAMS((int));
 static size_t block_compare PARAMS((char const *, char const *));
 static size_t block_compare_and_count PARAMS((char const *, char const *, long *));
-static size_t block_read PARAMS((int, char *, size_t));
-static void printc PARAMS((int, unsigned));
-static void try_help PARAMS((char const *));
+static void sprintc PARAMS((char *, int, unsigned));
+static void try_help PARAMS((char const *, char const *)) __attribute__((noreturn));
 static void check_stdout PARAMS((void));
 static void usage PARAMS((void));
 
 /* Name under which this program was invoked.  */
-char const *program_name;
+char *program_name;
 
 /* Filenames of the compared files.  */
 static char const *file[2];
@@ -87,40 +93,50 @@ static struct option const long_options[] =
   {"silent", 0, 0, 's'},
   {"quiet", 0, 0, 's'},
   {"version", 0, 0, 'v'},
-  {"help", 0, 0, 129},
+  {"help", 0, 0, CHAR_MAX + 1},
   {0, 0, 0, 0}
 };
 
 static void
-try_help (reason)
-     char const *reason;
+try_help (reason_msgid, operand)
+     char const *reason_msgid;
+     char const *operand;
 {
-  if (reason)
-    error (0, 0, "%s", reason);
-  error (2, 0, "Try `%s --help' for more information.", program_name);
+  if (reason_msgid)
+    error (0, 0, _(reason_msgid), operand);
+  error (2, 0, _("Try `%s --help' for more information."), program_name);
+  abort ();
 }
 
 static void
 check_stdout ()
 {
   if (ferror (stdout))
-    error (2, 0, "write error");
+    error (2, 0, _("write failed"));
   else if (fclose (stdout) != 0)
-    error (2, errno, "write error");
+    error (2, errno, _("write failed"));
 }
+
+static char const * const option_help_msgid[] = {
+  "-c  --print-chars  Output differing bytes as characters.",
+  "-i N  --ignore-initial=N  Ignore differences in the first N bytes of input.",
+  "-l  --verbose  Output offsets and codes of all differing bytes.",
+  "-s  --quiet  --silent  Output nothing; yield exit status only.",
+  "-v  --version  Output version info.",
+  "--help  Output this help.",
+  0
+};
 
 static void
 usage ()
 {
-  printf ("Usage: %s [OPTION]... FILE1 [FILE2]\n", program_name);
-  printf ("%s", "\
-  -c  --print-chars  Output differing bytes as characters.\n\
-  -i N  --ignore-initial=N  Ignore differences in the first N bytes of input.\n\
-  -l  --verbose  Output offsets and codes of all differing bytes.\n\
-  -s  --quiet  --silent  Output nothing; yield exit status only.\n\
-  -v  --version  Output version info.\n\
-  --help  Output this help.\n");
-  printf ("If a FILE is `-' or missing, read standard input.\n");
+  char const * const *p;
+
+  printf (_("Usage: %s [OPTION]... FILE1 [FILE2]\n"), program_name);
+  printf (_("If a FILE is `-' or missing, read standard input.\n"));
+  for (p = option_help_msgid;  *p;  p++)
+    printf ("  %s\n", _(*p));
+  printf (_("Report bugs to <bug-gnu-utils@gnu.org>.\n"));
 }
 
 int
@@ -130,14 +146,17 @@ main (argc, argv)
 {
   int c, i, exit_status;
   struct stat stat_buf[2];
+  size_t alloc_size;
 
   initialize_main (&argc, &argv);
+  setlocale (LC_ALL, "");
   program_name = argv[0];
+  xmalloc_exit_failure = 2;
 
   /* Parse command line options.  */
 
   while ((c = getopt_long (argc, argv, "ci:lsv", long_options, 0))
-	 != EOF)
+	 != -1)
     switch (c)
       {
       case 'c':
@@ -145,15 +164,19 @@ main (argc, argv)
 	break;
 
       case 'i':
-	ignore_initial = 0;
-	while (*optarg)
-	  {
-	    /* Don't use `atol', because `off_t' may be longer than `long'.  */
-	    unsigned digit = *optarg++ - '0';
-	    if (9 < digit)
-	      try_help ("non-digit in --ignore-initial value");
-	    ignore_initial = 10 * ignore_initial + digit;
-	  }
+	{
+	  char const *p = optarg;
+	  ignore_initial = 0;
+	  while (*p)
+	    {
+	      /* Don't use `atol'; `off_t' may be longer than `long'.  */
+	      unsigned digit = *p++ - '0';
+	      if (9 < digit)
+		try_help ("--ignore-initial value `%s' is not a nonnegative integer",
+			  optarg);
+	      ignore_initial = 10 * ignore_initial + digit;
+	    }
+	}
 	break;
 
       case 'l':
@@ -165,26 +188,28 @@ main (argc, argv)
 	break;
 
       case 'v':
-	printf ("cmp - GNU diffutils version %s\n", version_string);
+	printf ("cmp %s\n%s\n\n%s\n\n%s\n",
+		version_string, copyright_string,
+		_(free_software_msgid), _(authorship_msgid));
 	exit (0);
 
-      case 129:
+      case CHAR_MAX + 1:
 	usage ();
 	check_stdout ();
 	exit (0);
 
       default:
-	try_help (0);
+	try_help (0, 0);
       }
 
   if (optind == argc)
-    try_help ("missing operand");
+    try_help ("missing operand after `%s'", argv[argc - 1]);
 
   file[0] = argv[optind++];
   file[1] = optind < argc ? argv[optind++] : "-";
 
   if (optind < argc)
-    try_help ("extra operands");
+    try_help ("extra operand `%s'", argv[optind]);
 
   for (i = 0; i < 2; i++)
     {
@@ -251,10 +276,12 @@ main (argc, argv)
   buf_size = buffer_lcm (STAT_BLOCKSIZE (stat_buf[0]),
 			 STAT_BLOCKSIZE (stat_buf[1]));
 
-  /* Allocate buffers, with space for sentinels at the end.  */
+  /* Allocate word-aligned buffers, with space for sentinels at the end.  */
 
-  for (i = 0; i < 2; i++)
-    buffer[i] = xmalloc (buf_size + sizeof (word));
+  alloc_size = buf_size + 2 * sizeof (word) - 1;
+  alloc_size -= alloc_size % sizeof (word);
+  buffer[0] = xmalloc (2 * alloc_size);
+  buffer[1] = buffer[0] + alloc_size;
 
   exit_status = cmp ();
 
@@ -332,20 +359,25 @@ cmp ()
 	  switch (comparison_type)
 	    {
 	    case type_first_diff:
-	      /* See Posix.2 section 4.10.6.1 for this format.  */
-	      printf ("%s %s differ: char %lu, line %lu",
-		      file[0], file[1], char_number, line_number);
-	      if (opt_print_chars)
+	      if (!opt_print_chars)
+		{
+		  /* See Posix.2 section 4.10.6.1 for this format.  */
+		  printf (_("%s %s differ: char %lu, line %lu\n"),
+			  file[0], file[1], char_number, line_number);
+		}
+	      else
 		{
 		  unsigned char c0 = buf0[first_diff];
 		  unsigned char c1 = buf1[first_diff];
-		  printf (" is %3o ", c0);
-		  printc (0, c0);
-		  printf (" %3o ", c1);
-		  printc (0, c1);
+		  char s0[5];
+		  char s1[5];
+		  sprintc (s0, 0, c0);
+		  sprintc (s1, 0, c1);
+		  printf (_("%s %s differ: char %lu, line %lu is %3o %s %3o %s\n"),
+			  file[0], file[1], char_number, line_number,
+			  c0, s0, c1, s1);
 		}
-	      putchar ('\n');
-	      /* Fall through. */
+	      /* Fall through.  */
 	    case type_status:
 	      return 1;
 
@@ -358,11 +390,12 @@ cmp ()
 		    {
 		      if (opt_print_chars)
 			{
-			  printf ("%6lu %3o ", char_number, c0);
-			  printc (4, c0);
-			  printf (" %3o ", c1);
-			  printc (0, c1);
-			  putchar ('\n');
+			  char s0[5];
+			  char s1[5];
+			  sprintc (s0, 4, c0);
+			  sprintc (s1, 0, c1);
+			  printf ("%6lu %3o %s %3o %s\n",
+				  char_number, c0, s0, c1, s1);
 			}
 		      else
 			/* See Posix.2 section 4.10.6.1 for this format.  */
@@ -381,7 +414,7 @@ cmp ()
 	{
 	  if (comparison_type != type_status)
 	    /* See Posix.2 section 4.10.6.2 for this format.  */
-	    fprintf (stderr, "cmp: EOF on %s\n", file[read1 < read0]);
+	    fprintf (stderr, _("cmp: EOF on %s\n"), file[read1 < read0]);
 
 	  return 1;
 	}
@@ -483,70 +516,43 @@ block_compare (p0, p1)
   return c0 - p0;
 }
 
-/* Read NCHARS bytes from descriptor FD into BUF.
-   Return the number of characters successfully read.
-   The number returned is always NCHARS unless end-of-file or error.  */
-
-static size_t
-block_read (fd, buf, nchars)
-     int fd;
-     char *buf;
-     size_t nchars;
-{
-  char *bp = buf;
-
-  do
-    {
-      size_t nread = read (fd, bp, nchars);
-      if (nread == -1)
-	return -1;
-      if (nread == 0)
-	break;
-      bp += nread;
-      nchars -= nread;
-    }
-  while (nchars != 0);
-
-  return bp - buf;
-}
-
-/* Print character C, making unprintable characters
+/* Put into BUF the character C, making unprintable characters
    visible by quoting like cat -t does.
    Pad with spaces on the right to WIDTH characters.  */
 
 static void
-printc (width, c)
+sprintc (buf, width, c)
+     char *buf;
      int width;
      unsigned c;
 {
-  register FILE *fs = stdout;
-
   if (! ISPRINT (c))
     {
       if (c >= 128)
 	{
-	  putc ('M', fs);
-	  putc ('-', fs);
+	  *buf++ = 'M';
+	  *buf++ = '-';
 	  c -= 128;
 	  width -= 2;
 	}
       if (c < 32)
 	{
-	  putc ('^', fs);
+	  *buf++ = '^';
 	  c += 64;
 	  --width;
 	}
       else if (c == 127)
 	{
-	  putc ('^', fs);
+	  *buf++ = '^';
 	  c = '?';
 	  --width;
 	}
     }
 
-  putc (c, fs);
+  *buf++ = c;
   while (--width > 0)
-    putc (' ', fs);
+    *buf++ = ' ';
+  *buf = 0;
 }
 
 /* Position file I to `ignore_initial' bytes from its initial position,

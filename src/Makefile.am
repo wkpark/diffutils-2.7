@@ -25,20 +25,24 @@ noinst_HEADERS = diff.h system.h
 
 LDADD = libdiffutils.la
 
-cmp_SOURCES = cmp.c version.c
-diff3_SOURCES = diff3.c version.c
-sdiff_SOURCES = sdiff.c version.c
+cmp_SOURCES = cmp.c
+diff3_SOURCES = diff3.c
+sdiff_SOURCES = sdiff.c
 diff_SOURCES = diff.c \
 	analyze.c context.c dir.c ed.c ifdef.c io.c \
-	normal.c side.c util.c \
-	version.c
+	normal.c side.c util.c
+
+NULL_DEVICE = /dev/null
+cmp_CPPFLAGS = -DNULL_DEVICE=\"$(NULL_DEVICE)\"
 
 lib_LTLIBRARIES = libdiffutils.la
 libdiffutils_la_SOURCES = \
 	error.c fnmatch.c \
 	cmpbuf.c \
 	regex.c xmalloc.c \
-	getopt1.c getopt.c
+	getopt1.c getopt.c \
+	version.c \
+	quotesys.c freesoft.c
 
 libdiffutils_la_LDFLAGS = -version-info 0:0:0
 libdiffutils_la_LIBADD = @ALLOCA@ @LIBOBJS@

@@ -1,3 +1,431 @@
+1998-09-14  Paul Eggert  <eggert@twinsun.com>
+
+	* Makefile.in (VERSION): Bump to 2.7.2.
+	(DEFAULT_DIFF_PROGRAM): Renamed from DIFF_PROGRAM.
+	(PR_PROGRAM): All `configure' to define it.
+	(srcs): Add $(diffutils_srcs), freesoft.c, quotearg.c instead of quote.c,
+	quotearg.h.
+	(distfiles): Add acconfig.h, message/*.
+	(all): Depend on $(destfiles), not info.
+	(version.c): Parenthesize `GNU diffutils'.
+	(common_o): Add freesoft.o
+	(diff_o): quote.o -> quotearg.o
+	(diff3_o, sdiff_o): Likewise.
+	(diff.dvi): Depend on version.texi.
+	(diff.o diff3.o quotearg.o sdiff.o util.o): New dependency on quotearg.h
+	(diff3.o): DIFF_PROGRAM -> DEFAULT_DIFF_PROGRAM.
+	(sdiff.o): Likewise.
+	(messages.po): Remove.
+	(message/msgid.po, message/template.po): New rules.
+	(maintainer-clean): Renamed from realclean.
+	(install): Install from source directory, if applicable.
+	Invoke install-info if needed.
+	(install-strip): New rule.
+	(check): Set DIFF.
+	(stamp-h.in): Don't put the date into the timestamp.
+	(D_dirs): Add $D/message.
+	($D.tar.gz): Compress with gzip -9.
+	Don't use ln to create distribution; it doesn't work with symlinks.
+	(srcs, distfiles, diff_o, diff3_o, sdiff_o): Rename quotearg.c to
+	quotesys.c and quotearg.h to quotesys.h.
+
+	* configure.in (AC_PATH_PROG): Add PR_PROGRAM.
+	If available, prefer support for large files unless the user specified
+	one of the CPPFLAGS, LDFLAGS, or LIBS variables.
+	(AC_STRUCT_ST_RDEV): Add.
+	(HAVE_ST_FSTYPE_STRING): Add.
+	(--with-mvfs-stat-bug, --with-nfs-stat-bug): New options.
+	(HAVE_MEMCHR): New macro.
+	(AC_CHECK_FUNCS): Add sicprocmask.
+
+	* diff.h (XTERN): Renamed from EXTERN.
+	(struct filedata): Remove dir_p arg.
+	(struct comparison): New type.
+	(diff_2_files, diff_dirs)" Ise ot/
+	(error): Add printf attribute if applicable.
+	(free_software_msgid): New decl.
+	(pr_program): New decl.
+	(fatal): Add noreturn attribute.
+	(pfatal_with_name): Likewise.
+
+	* system.h (__attribute__): New macro.
+	(getenv): Don't declare if HAVE_STDLIB_H.
+	(CHAR_MAX): New macro.
+	(<locale.h>): New include.
+	(<locale.h>): Include before <libintl.h>.
+	(could_be_mvfs_stat_bug, could_be_nfs_stat_bug, dev_may_have_duplicate_ino,
+	same_special_file): New macros.
+	(same_file): Use them.
+
+	* cmp.c (authorship_msgid): New var.
+	(free_software_msgid): New decl.
+	(error): Now has printf attribute.
+	(try_help): Likewise.
+	(long_options): Don't assume ASCII.
+	(try_help): Now accepts operand arg.
+	(main): Check for -1, not EOF, when calling getopt_long.
+	Report --ignore-initial value when complaining about it.
+	Output copyright and free software info with -v.
+	Don't assume ASCII.
+	Report last operand when one is missing.
+	Report text of extra operand.
+	Move block_read into cmpbuf.c.
+
+	* diff.c (authorship_msgid): New var.
+	(quotesys.h): Include.
+	(ck_atoi): Remove.
+	(function_regexp_list, ignore_regexp_list): Now static.
+	(binary_flag): Renamed from binary_I_O.
+	(entire_new_file_flag, unidirectional_new_file_flag, print_file_same_flag):
+	Now static.
+	(numeric_arg): Renamed from ck_atoi.
+	New argument specifying the argument type.
+	(longopts, main): Don't assume ASCII.
+	(longopts): Remove old aliases --file-label, --entire-new-file, --ascii,
+	--print.
+	(main): Check for -1, not EOF, when calling getopt_long.
+	Use numeric_arg to report errors.
+	Report error if -l specified but pagination is not supported.
+	Report error if -S is specified twice with conflicting values.
+	Have --version conform to the new GNU standards.
+	Add new --from-file, --to-file, --inhibit-hun,-merge options.
+	Make the horizon at least as large as the context.
+	Add casts to pacify gcc -Wall.
+	(try_help): Add operand arg.
+	(option_help_msgid): Doc fix to match above.
+	(usage): Indent option_help_msgid.
+	(compare_files): Now takes struct comparison
+	instead of two directory names and a depth.
+	(NONEXISTENT, UNOPENED, ERRNO_ENCODE, ERRNO_DECODE):
+	New macros.
+	(DIR_P): New macro.
+	Report error if fflush does.
+
+	* cmpbuf.c (block_read): Moved here from cmp.c.
+
+	* cmpbuf.h (block_read): New decl.
+
+	* io.c (cmpbuf.h): Include.
+	(slurp): Check for arithmetic overflow when computing buffer size.
+
+	* dir.c (diff_dirs): Check for recursive directory loop.
+	Arg is now struct comparison const *.
+	(dir_loop): New function
+
+	* analyze.c (no_discards): Remove.
+	(inhibit): Remove.
+	(shift_boundaries): Don't inhibit.  If inhibit_hunk_merge is nonzero,
+	don't merge hunks.
+	(briefly_report): Now returns 2 if trouble, CHANGES otherwise.
+	(diff_2_files): Now takes struct comparison.  If briefly_report reports
+	trouble, pass it on to caller.
+
+	* side.c (print_half_line): Add brackets to pacify GCC -Wall.
+
+	* sdiff.c (quotesys.h): Include.
+	(DIFF_PROGRAM, DEFAULT_EDITOR_PROGRAM): Remove.
+	(free_software_msgid, editor_program, not_found): New vars.
+	(diffbin, edbin): Remove.
+	(editor_program): Renamed from edbin.
+	(edit, interact): Now take extra string arg.
+	(exiterr, fatal, perror_fatal, try_help): Add noreturn attribute.
+	(sigset_t, sigemptyset, sigmask, sigaddset, SIG_BLOCK, SIG_SETMASK):
+	(sigprocmask): New macros, if !HAVE_SIGPROCMASK.
+	(error): Now has printf attribute.
+	(longopts, main): Don't assume ASCII.
+	(try_help): New operand arg.
+	(usage): Conform to new GNU standards.
+	(main): Set static vars for editor and diff program.
+	Compare getopt_long result to -1, not EOF.
+	-v conforms to new GNU standard.
+	Complain better about extra and missing operands.
+	If HAVE_VFORK, block SIGINT and SIGPIPE in the parent, since when
+	the child munges its handlers it may somp on the parent.
+	Pass rname to intract.
+	Translate not-found message before forking.
+	(give_help): Just output it all at once.
+	(edit): New args lname, lline, rname, rline.
+	(edit): New command 'd'.
+	(interact): New args lname, rname.
+
+	* util.c (quotesys.h): Include.
+	(PR_PROGRAM): New macro.
+	(pfatal_with_name): Abort if error returns.
+	(fatal): Likewise.
+	(print_message_queue): Free message chain after printing.
+	(currently_recursive): Renamed from current_depth, and now a boolean.
+	(begin_output): Report error if fflush does.
+	Avoid stdio and gettext in child.
+
+	* diff3.c (quotesys.h): Include.
+	(free_software_msgid): New decl.
+	(RANGE_START, RANGE_END): Renamed from START and END.
+	(fatal, perror_with_exit, try_help): Add noreturn attribute.
+	(error): Add printf attribute.
+	(diff_program): Now a ptr, not an array.  Initialize to DEFAULT_DIFF_PROGRAM
+	instead of DIFF_PROGRAM.
+	(longopts, main): Don't assume ASCII.
+	(main): Use DIFF environment var to specify name of diff program.
+	Compare getopt_long result to -1, not EOF.
+	-v now reports version according to new GNU standard.
+	Report spelling of extra operand, or last operand before missing one.
+	(try_help): Now takes operand arg.
+	(option_help_ms): Fix typo: missing comma.
+	(usage): Update as per current GNU standards.
+	(environ): Remove decl.
+	(read_diff): Invoke diff with --inhibit-hunk-merge.
+	Translate `not found' message before forking.
+	Quote name of diff program.
+	Pass horizon lines.
+	`memory exhausted' -> `Memory exhausted'
+
+	* pc/makefile (%.exe): Remove.
+	(pc-clean): Remove *.exe
+	* pc/makefile.sed (DEFAULT_DIFF_PROGRAM): Renamed from DIFF_PROGRAM.
+	When editing mkinstalldirs rule, look for exec_prefix and prefix.
+	Add .exe when installing files.
+	* pc/emx/config.h (same_file): Add.
+	* pc/config.h (same_file): Remove.
+	* pc/djgpp/config.h: Adjust to latest patch from eliz.
+	* pc/djgpp/makefile.sed: Don't alter PROGRAMS.
+	* pc/pc.c: Update FSF address.
+	(quote_system_arg): Renamed from system_quote_arg.
+
+	* README: Add --with-mvfs-stat-bug, --with-nfs-stat-bug.
+
+	* getmsgids: Add copyright date and update FSF address.
+
+	* diff.texi: Document recent changes.
+	The patch doc still corresponds to patch 2.2, unfortunately.
+	Update GNU bug reporting address.  Omit Larry Wall's address;
+	it's obsolete and he's busy with perl.
+
+	* context.c: Fix spacing.
+
+	* NEWS: Mention --from-file=FILE, --to-file=FILE, ed.
+
+	* acconfig.h, freesoft.c, message/de.po, message/en_UK.po,
+	message/es.po, message/fr.po, message/pl.po, message/sv.po:
+	New files.
+
+	* ed.c: Remove `#if 0'ed code.
+
+	* normal.c, waitpid.c: Update FSF address.
+
+1998-03-15  Paul Eggert  <eggert@twinsun.com>
+
+	* quotesys.c: Renamed from quotearg.c.
+
+	* quotesys.h: Renamed from quotearg.h
+	(__QUOTESYS_P): Renamed from __QUOTEARG_P.
+
+1997-05-05  Paul Eggert  <eggert@twinsun.com>
+
+	* quotesys.c, quotesys.h: New file.
+
+1994-11-14  Paul Eggert  <eggert@twinsun.com>
+
+	* Makefile.in (PACKAGE, VERSION, diffutils_srcs, D): New vars.
+	(version.c, version.texi, messages.po): New files.
+	messages.po is built automatically from source files and `getmsgids'.
+	Each function and macro whose first parameter is a gettext msgid
+	has had its first parameter's name changed so it ends in `msgid'.
+	All arrays of msgids have had their names changed to end in `msgid'.
+	`getmsgids' uses this to determine which strings are msgids.
+	All strings that are messages are passed through gettext once before
+	being used, so that they can be localized.
+	Several diagnostics have been changed slightly, to make them more
+	consistent and easier to translate.
+	(distfiles): Add them, pc/*, and getmsgids.
+	(diff.info): Now depends on version.texi.
+	(realclean): Clean messages.po, version.*.
+	(dist): Just build $D.tar.gz.
+	($D.tar.gz): New file, takes over old `dist' function.
+	Don't assume $(distfiles) are all in same directory.
+
+	* configure.in (AC_CHECK_HEADERS): Add libintl.h, locale.h.
+	(AC_CHECK_LIB): Check for -lintl.
+
+	* analyze.c (briefly_report): Rewrite `message (A?"B":"C")' as
+	`if (A) message ("B") : message ("C")'; this is for getmsgids.
+	(briefly_report, diff_2_files): For label, use file_label if set.
+
+	* system.h (gettext): Declare; use a stub if ! HAVE_LIBINTL_H.
+	(setlocale): Declare; use a stub if ! HAVE_LOCALE_H.
+
+	* diff3.c (main):
+	Invoke setlocale first thing, to tell library we're internationalized.
+	(option_help_msgid): New constant.
+	(usage): Use it, so message is translated one option at a time.
+
+	* cmp.c (main):
+	Invoke setlocale first thing, to tell library we're internationalized.
+	(option_help_msgid): New constant.
+	(usage): Use it, so message is translated one option at a time.
+	(sprintc): Renamed from `printc'.  Now outputs to a buffer instead of stdout.
+	(cmp): Use new sprintc semantics.
+
+	* diff.c (main):
+	Invoke setlocale first thing, to tell library we're internationalized.
+	-D FOO now outputs `/* ! FOO */ instead of `/* not FOO */'.
+	(option_help_msgid): New constant.
+	(usage): Use it, so message is translated one option at a time.
+	(compare_files): For label, use file_label if set.
+
+	* util.c (struct msg, message5, print_message_queue):
+	Allocate just one block of memory
+	to save a messsage.
+
+	* sdiff.c (version_string):
+	Fix typo in declaration: `const' was missing.
+	(option_help_msgid, help_msgid): New constant.
+	(usage, give_help): Use them, so message is translated one option at a time.
+	(main): Invoke setlocale first thing, to tell library we're internationalized.
+	(trapsigs): Ignore sigaction failure, to be compatible with `signal'.
+
+	* NEWS: 2.7.1 alpha news
+
+	* getmsgids: New file.
+
+	* diff.texi: Use version.texi.
+	-D FOO now outputs `/* ! FOO */ instead of `/* not FOO */'.
+
+Mon Nov 14 05:10:56 1994  Paul Eggert  <eggert@twinsun.com>
+
+	Add internationalization support.
+	Several messages have been changed slightly,
+	to make them more consistent and easier to translate.
+	All strings that are messages are passed through gettext once before
+	being used, so that they can be localized.
+	Each function and macro whose first parameter is a gettext msgid
+	has had its first parameter's name changed so it ends in `msgid'.
+	All arrays of msgids have had their names changed to end in `msgid'.
+	`getmsgids' uses this to determine which strings are msgids.
+
+	* pc/COPYING, pc/INSTALL, pc/config.h,
+	pc/djgpp/config.h, pc/djgpp/makefile.sed,
+	pc/emx/config.h, pc/emx/diff.def, pc/emx/gnuregex.def,
+	pc/emx/makefile.sed,
+	pc/makefile, pc/makefile.sed, pc/pc.c: New files, for PC support.
+
+	* getmsgid: New file.
+
+	* Makefile.in (PACKAGE, VERSION, diffutils_srcs, D): New vars.
+	(version.c, version.texi, messages.po): New files.
+	messages.po is built automatically from source files and `getmsgids'.
+	(distfiles): Add them, pc/*, and getmsgids.
+	(diff.info): Now depends on version.texi.
+	(realclean): Clean messages.po, version.*.
+	(dist): Just build $D.tar.gz.
+	($D.tar.gz): New file, takes over old `dist' function.
+	Don't assume $(distfiles) are all in same directory.
+
+	* configure.in (AC_CHECK_HEADERS): Add libintl.h, locale.h.
+	(AC_CHECK_LIB): Check for -lintl.
+
+	* analyze.c (briefly_report): Rewrite `message (A?"B":"C")' as
+	`if (A) message ("B") : message ("C")'; this is for getmsgids.
+	(briefly_report, diff_2_files): For label, use file_label if set.
+	* diff.c (compare_files): Likewise.
+
+	* system.h (gettext): Declare; use a stub if ! HAVE_LIBINTL_H.
+	(setlocale): Declare; use a stub if ! HAVE_LOCALE_H.
+
+	* cmp.c, diff.c, diff3.c, sdiff.c (main):
+	Invoke setlocale first thing, to tell library we're internationalized.
+	(option_help_msgid): New constant.
+	(usage): Use it, so message is translated one option at a time.
+	* sdiff (help_msgid, give_help): Likewise.
+
+	* cmp.c (sprintc): Renamed from `printc'.
+	Now outputs to a buffer instead of stdout.
+	(cmp): Use new sprintc; it's easier to internationalize.
+
+	* diff.c (main): -D FOO now outputs `/* ! FOO */ instead of
+	`/* not FOO */'.
+
+	* sdiff.c (version_string): Fix decl typo: `const' was missing.
+	(trapsigs): Ignore sigaction failure, to be compatible with `signal'.
+
+	* util.c (struct msg, message5, print_message_queue):
+	Allocate just one block of memory to save a messsage.
+
+Wed Nov  9 17:42:44 1994  Paul Eggert  <eggert@twinsun.com>
+
+	* sdiff.c (trapsigs): Don't check signal return value, since it's
+	bogus under djgpp.
+
+Mon Oct 31 07:27:27 1994  Paul Eggert  <eggert@twinsun.com>
+
+	* Makefile.in (srcs, diff_o, diff3_o, sdiff_o):
+	New files quote.c, quote.o.
+
+	* diff.h (function_regexp, ignore_regexp): Replace lists of compiled
+	regexps with these single compiled regexps.  All users changed.
+	(regexp_list,function_regexp_list,ignore_regexp_list): Move to diff.c.
+	* diff.c (add_regexp): Build one big regexp instead of a regexp list.
+	(summarize_regexp_list): New function.
+	(regexp_list): Redesigned struct; moved here from diff.h.
+	(function_regexp_list, ignore_regexp_list): Likewise, for vars.
+
+	* context.c (find_function): Simplify interface:
+	don't return size of function line.  All callers changed.
+	(print_context_script, find_function): INT_MAX now denotes no
+	previous match; this is simpler than `- file->prefix_lines - 1'.
+
+	* diff3.c (read_diff): Quote arguments with system_quote_arg.
+	* sdiff.c (main): Use system_quote_arg to compute command.
+	* diff.c (option_list): Quote options with system_quote_arg.
+	* util.c (begin_output): Use system_quote_arg to compute command.
+
+	* util.c (pr_program): New var.
+	(analyze_hunk): Fix off-by-1 line length bug.
+	Match with one big regexp instead of a list of regexps.
+	Use new `trivial_length' local instead of comparing first byte to `\n'.
+	Help the compiler with linbuf local vars.
+
+	* system.h (system_quote_arg):
+	New function; replaces SYSTEM_QUOTE_ARG macro.
+
+Sat Oct 15 20:09:12 1994  Paul Eggert  <eggert@twinsun.com>
+
+	* system.h (_tolower): Define if not already defined.
+	* io.c (find_and_hash_each_line): Change tolower to _tolower; this
+	speeds up diff -i considerably on some hosts (e.g. Solaris 2.3).
+	* util.c (line_cmp): Likewise.
+	* ifdef.c (groups_letter_value): Likewise.
+
+	* diff.h (ignore_some_line_changes): Remove.  All users changed.
+	* io.c (find_and_hash_each_line): Don't invoke line_cmp if the length
+	differs and -i is in force.  Don't assume ISSPACE ('\n') is nonzero.
+
+	* diff.h (xmalloc_exit_failure): New variable.
+	All `main' programs set this variable at the start.
+	xmalloc and xrealloc are now taken from GNU library.
+	* cmp.c (main): Align buffer size to word size; some mallocs care.
+	* io.c (slurp): Likewise.
+	* diff.c (add_exclude): Can now assume xrealloc (0, ...) works.
+	(add_regexp): Free storage on failure.  Allocate storage all at one go.
+	* system.h (malloc, realloc): Remove unused declarations.
+	* diff3.c, sdiff.c, util.c (xmalloc, xrealloc): Remove.
+	* sdiff.c (diffarg): Take advantage of cleaner xrealloc semantics.
+
+	* io.c (ROL): Use sizeof to make it more generic.
+
+	* Makefile.in (common_o): New variable.
+	Link error.o and xmalloc.o into all programs.
+	(check): Depend on $(PROGRAMS).
+
+	* diff.h (error): Change to GNU library standard.  All callers changed.
+	* diff3.c (main): Use strerror (EISDIR) instead of "Is a directory".
+	(fatal, perror_with_exit): Use `error'.
+	* util.c (perror_with_name, fatal): Use GNU `error'.
+	(error): Remove.
+
+Wed Oct 12 17:04:40 1994  David J. MacKenzie  (djm@duality.gnu.ai.mit.edu)
+
+	* cmp.c (main): Set xmalloc_exit_failure.
+
 Sat Oct  1 05:24:19 1994  Paul Eggert  <eggert@twinsun.com>
 
 	* Version 2.7 released.
@@ -1758,9 +2186,3 @@ Thu Nov  3 16:30:24 1988  Randall Smith  (randy at gluteus.ai.mit.edu)
 
 	* ed.c, analyze.c, context.c: Shortened names to 12 characters for
 	the sake of System V (too simple not to do).
-
-Local Variables:
-mode: indented-text
-left-margin: 8
-version-control: never
-End:

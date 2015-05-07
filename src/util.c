@@ -70,7 +70,16 @@ fatal (msgid)
 {
   print_message_queue ();
   error (2, 0, "%s", _(msgid));
-  abort ();
+}
+
+/* Print an error message containing MSGID.  */
+
+void
+warn (msgid)
+     char const *msgid;
+{
+  print_message_queue ();
+  error (0, 0, "%s", _(msgid));
 }
 
 /* Like printf, except if -l in effect then save the message and print later.

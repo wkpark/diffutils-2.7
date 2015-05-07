@@ -55,12 +55,12 @@ static int add_exclude_file PARAMS((char const *));
 static int compare_files PARAMS((struct comparison const *, char const *, char const *));
 static int specify_format PARAMS((char **, char *));
 static void add_exclude PARAMS((char const *));
-static void add_regexp PARAMS((struct regexp_list *, char const *));
+static int add_regexp PARAMS((struct regexp_list *, char const *));
 static void numeric_arg PARAMS((char const *, char const *, int *));
-static void summarize_regexp_list PARAMS((struct regexp_list *));
-static void specify_style PARAMS((enum output_style));
-static void try_help PARAMS((char const *, char const *)) __attribute__((noreturn));
-static void check_stdout PARAMS((void));
+static int summarize_regexp_list PARAMS((struct regexp_list *));
+static int specify_style PARAMS((enum output_style));
+static int try_help PARAMS((char const *, char const *));
+static void check_output PARAMS((FILE *));
 static void usage PARAMS((void));
 
 /* Nonzero for -r: if comparing two directories,
@@ -282,6 +282,7 @@ main (argc, argv)
   int show_c_function = 0;
   char const *old_file = 0;
   char const *new_file = 0;
+  int r;
 
   /* Do our initializations.  */
   initialize_main (&argc, &argv);
@@ -293,6 +294,8 @@ main (argc, argv)
   horizon_lines = -1;
   function_regexp_list.buf = &function_regexp;
   ignore_regexp_list.buf = &ignore_regexp;
+  optind = 0;
+  r = 0;
 
   /* Decode the options.  */
 
@@ -319,8 +322,10 @@ main (argc, argv)
 	  /* If a context length has already been specified,
 	     more digits allowed only if they follow right after the others.
 	     Reject two separate runs of digits, or digits after -C.  */
-	  else if (prev < '0' || prev > '9')
-	    fatal ("context length specified twice");
+	  else if (prev < '0' || prev > '9') {
+	    warn ("context length specified twice");
+	    return 0;
+	  }
 
 	  context = context * 10 + c - '0';
 	  break;
@@ -349,7 +354,9 @@ main (argc, argv)
 	  /* Fall through.  */
 	case 'c':
 	  /* Make context-style output.  */
-	  specify_style (c == 'U' ? OUTPUT_UNIFIED : OUTPUT_CONTEXT);
+	  r = specify_style (c == 'U' ? OUTPUT_UNIFIED : OUTPUT_CONTEXT);
+	  if (r < 0)
+	    return r;
 	  break;
 
 	case 'd':
@@ -360,7 +367,9 @@ main (argc, argv)
 
 	case 'D':
 	  /* Make merged #ifdef output.  */
-	  specify_style (OUTPUT_IFDEF);
+	  r = specify_style (OUTPUT_IFDEF);
+	  if (r < 0)
+	    return r;
 	  {
 	    int i, err = 0;
 	    static char const C_ifdef_group_formats[] =
@@ -384,20 +393,26 @@ main (argc, argv)
 
 	case 'e':
 	  /* Make output that is a valid `ed' script.  */
-	  specify_style (OUTPUT_ED);
+	  r = specify_style (OUTPUT_ED);
+	  if (r < 0)
+	    return r;
 	  break;
 
 	case 'f':
 	  /* Make output that looks vaguely like an `ed' script
 	     but has changes in the order they appear in the file.  */
-	  specify_style (OUTPUT_FORWARD_ED);
+	  r = specify_style (OUTPUT_FORWARD_ED);
+	  if (r < 0)
+	    return r;
 	  break;
 
 	case 'F':
 	  /* Show, for each set of changes, the previous line that
 	     matches the specified regexp.  Currently affects only
 	     context-style output.  */
-	  add_regexp (&function_regexp_list, optarg);
+	  r = add_regexp (&function_regexp_list, optarg);
+	  if (r < 0)
+	    return r;
 	  break;
 
 	case 'h':
@@ -422,7 +437,9 @@ main (argc, argv)
 	case 'I':
 	  /* Ignore changes affecting only lines that match the
 	     specified regexp.  */
-	  add_regexp (&ignore_regexp_list, optarg);
+	  r = add_regexp (&ignore_regexp_list, optarg);
+	  if (r < 0)
+	    return r;
 	  ignore_some_changes = 1;
 	  break;
 
@@ -447,14 +464,18 @@ main (argc, argv)
 	    file_label[0] = optarg;
 	  else if (!file_label[1])
 	    file_label[1] = optarg;
-	  else
-	    fatal ("too many file label options");
+	  else {
+	    warn ("too many file label options");
+	    return 0;
+	  }
 	  break;
 
 	case 'n':
 	  /* Output RCS-style diffs, like `-f' except that each command
 	     specifies the number of lines affected.  */
-	  specify_style (OUTPUT_RCS);
+	  r = specify_style (OUTPUT_RCS);
+	  if (r < 0)
+	    return r;
 	  break;
 
 	case 'N':
@@ -466,7 +487,9 @@ main (argc, argv)
 	case 'p':
 	  /* Make context-style output and show name of last C function.  */
 	  show_c_function = 1;
-	  add_regexp (&function_regexp_list, "^[_a-zA-Z$]");
+	  r = add_regexp (&function_regexp_list, "^[_a-zA-Z$]");
+	  if (r < 0)
+	    return r;
 	  break;
 
 	case 'P':
@@ -494,8 +517,10 @@ main (argc, argv)
 	case 'S':
 	  /* When comparing directories, start with the specified
 	     file name.  This is used for resuming an aborted comparison.  */
-	  if (dir_start_file && strcmp (dir_start_file, optarg) != 0)
-	    fatal ("conflicting starting file");
+	  if (dir_start_file && strcmp (dir_start_file, optarg) != 0) {
+	    warn ("conflicting starting file");
+	    return 0;
+	  }
 	  dir_start_file = optarg;
 	  break;
 
@@ -514,15 +539,17 @@ main (argc, argv)
 
 	case 'u':
 	  /* Output the context diff in unidiff format.  */
-	  specify_style (OUTPUT_UNIFIED);
+	  r = specify_style (OUTPUT_UNIFIED);
+	  if (r < 0)
+	    return r;
 	  break;
 
 	case 'v':
 	  printf ("diff %s\n%s\n\n%s\n\n%s\n",
 		  version_string, copyright_string,
 		  _(free_software_msgid), _(authorship_msgid));
-	  check_stdout ();
-	  exit (0);
+	  check_output (stdout);
+	  return 0;
 
 	case 'w':
 	  /* Ignore horizontal white space when comparing lines.  */
@@ -535,20 +562,26 @@ main (argc, argv)
 	  break;
 
 	case 'X':
-	  if (add_exclude_file (optarg) != 0)
-	    pfatal_with_name (optarg);
+	  if (add_exclude_file (optarg) != 0) {
+	    perror_with_name (optarg);
+	    return 0;
+	  }
 	  break;
 
 	case 'y':
-	  /* Use side-by-side (sdiff-style) columnar output.  */
-	  specify_style (OUTPUT_SDIFF);
+	  /* Use side-by-side (sdiff-style) columnar output. */
+	  r = specify_style (OUTPUT_SDIFF);
+	  if (r < 0)
+	    return r;
 	  break;
 
 	case 'W':
 	  /* Set the line width for OUTPUT_SDIFF.  */
 	  numeric_arg ("column width", optarg, &width);
-	  if (!width)
-	    fatal ("column width is zero");
+	  if (!width) {
+	    warn ("column width is zero");
+	    return 0;
+	  }
 	  break;
 
 	case CHAR_MAX + 1:
@@ -560,21 +593,27 @@ main (argc, argv)
 	  break;
 
 	case CHAR_MAX + 3:
-	  /* sdiff-style columns output.  */
-	  specify_style (OUTPUT_SDIFF);
+	  /* sdiff-style columns output. */
+	  r = specify_style (OUTPUT_SDIFF);
+	  if (r < 0)
+	    return r;
 	  sdiff_help_sdiff = 1;
 	  break;
 
 	case CHAR_MAX + 4:
 	case CHAR_MAX + 5:
 	case CHAR_MAX + 6:
-	  specify_style (OUTPUT_IFDEF);
+	  r = specify_style (OUTPUT_IFDEF);
+	  if (r < 0)
+	    return r;
 	  if (specify_format (&line_format[c - (CHAR_MAX + 4)], optarg) != 0)
 	    error (0, 0, _("conflicting line format"));
 	  break;
 
 	case CHAR_MAX + 7:
-	  specify_style (OUTPUT_IFDEF);
+	  r = specify_style (OUTPUT_IFDEF);
+	  if (r < 0)
+	    return r;
 	  {
 	    int i, err = 0;
 	    for (i = 0; i < sizeof (line_format) / sizeof (*line_format); i++)
@@ -588,19 +627,24 @@ main (argc, argv)
 	case CHAR_MAX + 9:
 	case CHAR_MAX + 10:
 	case CHAR_MAX + 11:
-	  specify_style (OUTPUT_IFDEF);
+	  r = specify_style (OUTPUT_IFDEF);
+	  if (r < 0)
+	    return r;
 	  if (specify_format (&group_format[c - (CHAR_MAX + 8)], optarg) != 0)
 	    error (0, 0, _("conflicting group format"));
 	  break;
 
 	case CHAR_MAX + 12:
 	  numeric_arg ("horizon length", optarg, &horizon_lines);
+	  if (!horizon_lines)
+	    error (-1, 0, "horizon must be a nonnegative integer");
+
 	  break;
 
 	case CHAR_MAX + 13:
 	  usage ();
-	  check_stdout ();
-	  exit (0);
+	  check_output (stdout);
+	  return 0;
 
 	case CHAR_MAX + 14:
 	  /* Use binary I/O when reading and writing data.
@@ -612,14 +656,18 @@ main (argc, argv)
 	  break;
 
 	case CHAR_MAX + 15:
-	  if (old_file)
-	    fatal ("multiple `--from-file' options");
+	  if (old_file) {
+	    warn ("multiple `--from-file' options");
+	    return 0;
+	  }
 	  old_file = optarg;
 	  break;
 
 	case CHAR_MAX + 16:
-	  if (new_file)
-	    fatal ("multiple `--to-file' options");
+	  if (new_file) {
+	    warn ("multiple `--to-file' options");
+	    return 0;
+	  }
 	  new_file = optarg;
 	  break;
 
@@ -629,12 +677,21 @@ main (argc, argv)
 
 	default:
 	  try_help (0, 0);
+	  return 0;
 	}
       prev = c;
     }
 
   if (width < 0)
     width = DEFAULT_WIDTH;
+
+  if (argc - optind != 2) {
+    if (argc - optind < 2)
+      try_help ("missing operand after `%s'", argv[argc - 1]);
+    else
+      try_help ("extra operand `%s'", argv[optind + 2]);
+    return 0;
+  }
 
   {
     /*
@@ -653,8 +710,11 @@ main (argc, argv)
     sdiff_column2_offset = sdiff_half_width ? off : width;
   }
 
-  if (show_c_function && output_style != OUTPUT_UNIFIED)
-    specify_style (OUTPUT_CONTEXT);
+  if (show_c_function && output_style != OUTPUT_UNIFIED) {
+    r = specify_style (OUTPUT_CONTEXT);
+    if (r < 0)
+      return r;
+  }
 
   if (output_style != OUTPUT_CONTEXT && output_style != OUTPUT_UNIFIED)
     context = 0;
@@ -667,8 +727,12 @@ main (argc, argv)
   if (horizon_lines < context)
     horizon_lines = context;
 
-  summarize_regexp_list (&function_regexp_list);
-  summarize_regexp_list (&ignore_regexp_list);
+  r = summarize_regexp_list (&function_regexp_list);
+  if (r < 0)
+    return r;
+  r = summarize_regexp_list (&ignore_regexp_list);
+  if (r < 0)
+    return r;
 
   if (output_style == OUTPUT_IFDEF)
     {
@@ -732,6 +796,7 @@ main (argc, argv)
 	    try_help ("missing operand after `%s'", argv[argc - 1]);
 	  else
 	    try_help ("extra operand `%s'", argv[optind + 2]);
+	  return 0;
 	}
 
       exit_status = compare_files ((struct comparison *) 0,
@@ -741,14 +806,13 @@ main (argc, argv)
   /* Print any messages that were saved up for last.  */
   print_message_queue ();
 
-  check_stdout ();
-  exit (exit_status);
+  check_output (stdout);
   return exit_status;
 }
 
 /* Append to REGLIST the regexp PATTERN.  */
 
-static void
+static int
 add_regexp (reglist, pattern)
      struct regexp_list *reglist;
      char const *pattern;
@@ -784,12 +848,13 @@ add_regexp (reglist, pattern)
 	}
       memcpy (regexps + len, pattern, patlen + 1);
     }
+  return 0;
 }
 
 /* Ensure that REGLIST represents the disjunction of its regexps.
    This is done here, rather than earlier, to avoid O(N^2) behavior.  */
 
-static void
+static int
 summarize_regexp_list (reglist)
      struct regexp_list *reglist;
 {
@@ -803,13 +868,16 @@ summarize_regexp_list (reglist)
 	     (If just one regexp was specified, it is already compiled.)  */
 	  char const *m = re_compile_pattern (reglist->regexps, reglist->len,
 					      reglist->buf);
-	  if (m != 0)
-	    error (2, 0, "%s: %s", reglist->regexps, m);
+	  if (m != 0) {
+	    error (0, 0, "%s: %s", reglist->regexps, m);
+	    return -1;
+	  }
 	}
     }
+  return 0;
 }
 
-static void
+static int
 try_help (reason_msgid, operand)
      char const *reason_msgid;
      char const *operand;
@@ -817,14 +885,15 @@ try_help (reason_msgid, operand)
   if (reason_msgid)
     error (0, 0, _(reason_msgid), operand);
   error (2, 0, _("Try `%s --help' for more information."), program_name);
-  abort ();
+  return 2;
 }
 
 static void
-check_stdout ()
+check_output (stream)
+    FILE *stream;
 {
-  if (ferror (stdout) || fclose (stdout) != 0)
-    fatal ("write failed");
+  if (ferror (stream) || fflush (stream) != 0)
+    fatal ("write error");
 }
 
 static char const * const option_help_msgid[] = {
@@ -944,7 +1013,7 @@ specify_format (var, value)
   return err;
 }
 
-static void
+static int
 specify_style (style)
      enum output_style style;
 {
@@ -952,6 +1021,7 @@ specify_style (style)
       && output_style != style)
     error (0, 0, _("conflicting specifications of output style"));
   output_style = style;
+  return 0;
 }
 
 static char const *
@@ -1155,8 +1225,10 @@ compare_files (parent, name0, name1)
       char const *filename = cmp.file[dir_arg].name = free0
 	= dir_file_pathname (dir, p ? p + 1 : fnm);
 
-      if (strcmp (fnm, "-") == 0)
-	fatal ("cannot compare `-' to a directory");
+      if (strcmp (fnm, "-") == 0) {
+	warn ("cannot compare `-' to a directory");
+	goto out;
+      }
 
       if (stat (filename, &cmp.file[dir_arg].stat) != 0)
 	{
@@ -1180,8 +1252,10 @@ compare_files (parent, name0, name1)
     }
   else if (DIR_P (0) & DIR_P (1))
     {
-      if (output_style == OUTPUT_IFDEF)
-	fatal ("-D option not supported with directories");
+      if (output_style == OUTPUT_IFDEF) {
+	warn ("-D option not supported with directories");
+	goto out;
+      }
 
       /* If both are directories, compare the files in them.  */
 
@@ -1312,10 +1386,13 @@ compare_files (parent, name0, name1)
     {
       /* Flush stdout so that the user sees differences immediately.
 	 This can hurt performance, unfortunately.  */
-      if (fflush (stdout) != 0)
-	pfatal_with_name (_("write failed"));
+      if (fflush (stdout) != 0) {
+	perror_with_name (_("write failed"));
+	status = 2;
+      }
     }
 
+out:
   if (free0)
     free (free0);
   if (free1)

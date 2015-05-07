@@ -139,7 +139,7 @@ error (status, errnum, message, va_alist)
   putc ('\n', stderr);
   fflush (stderr);
   if (status)
-    exit (status);
+    diff_exit (status);
 }
 
 /* Sometimes we want to have at most one error per line.  This

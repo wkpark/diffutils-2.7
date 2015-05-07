@@ -28,9 +28,7 @@ LDADD = libdiffutils.la
 cmp_SOURCES = cmp.c exit.c
 diff3_SOURCES = diff3.c exit.c
 sdiff_SOURCES = sdiff.c exit.c
-diff_SOURCES = diff.c \
-	analyze.c context.c dir.c ed.c ifdef.c io.c \
-	normal.c side.c util.c exit.c
+diff_SOURCES = diffmain.c exit.c
 
 NULL_DEVICE = /dev/null
 cmp_CPPFLAGS = -DNULL_DEVICE=\"$(NULL_DEVICE)\"
@@ -42,7 +40,10 @@ libdiffutils_la_SOURCES = \
 	regex.c xmalloc.c \
 	getopt1.c getopt.c \
 	version.c \
-	quotesys.c freesoft.c
+	quotesys.c freesoft.c \
+	analyze.c context.c dir.c ed.c ifdef.c io.c \
+	normal.c side.c util.c \
+	diff.c
 
 libdiffutils_la_LDFLAGS = -version-info 0:0:0
 libdiffutils_la_LIBADD = @ALLOCA@ @LIBOBJS@

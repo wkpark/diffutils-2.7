@@ -271,7 +271,7 @@ static struct option const longopts[] =
 };
 
 int
-main (argc, argv)
+diffMain (argc, argv)
      int argc;
      char *argv[];
 {

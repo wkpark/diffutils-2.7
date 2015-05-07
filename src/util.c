@@ -126,8 +126,8 @@ message5 (format_msgid, arg1, arg2, arg3, arg4)
   else
     {
       if (sdiff_help_sdiff)
-	putchar (' ');
-      printf (_(format_msgid), arg1, arg2, arg3, arg4);
+	diff_puts (" ");
+      diff_printf (_(format_msgid), arg1, arg2, arg3, arg4);
     }
 }
 
@@ -146,7 +146,7 @@ print_message_queue ()
       arg[0] = m->args;
       for (i = 0;  i < 4;  i++)
 	arg[i + 1] = arg[i] + strlen (arg[i]) + 1;
-      printf (_(arg[0]), arg[1], arg[2], arg[3], arg[4]);
+      diff_printf (_(arg[0]), arg[1], arg[2], arg[3], arg[4]);
       free (m);
       m = next;
     }
@@ -263,7 +263,7 @@ begin_output ()
       /* If handling multiple files (because scanning a directory),
 	 print which files the following output is about.  */
       if (currently_recursive)
-	printf ("%s\n", name);
+	diff_printf ("%s\n", name);
     }
 
   free (name);
@@ -495,13 +495,13 @@ print_1_line (line_flag, line)
   if (line_flag && *line_flag)
     {
       flag_format = tab_align_flag ? "%s\t" : "%s ";
-      fprintf (out, flag_format, line_flag);
+      diff_printf (flag_format, line_flag);
     }
 
   output_1_line (text, limit, flag_format, line_flag);
 
   if ((!line_flag || line_flag[0]) && limit[-1] != '\n')
-    fprintf (out, "\n\\ %s\n", _("No newline at end of file"));
+    diff_printf ("\n\\ %s\n", _("No newline at end of file"));
 }
 
 /* Output a line from TEXT up to LIMIT.  Without -t, output verbatim.
@@ -513,8 +513,17 @@ void
 output_1_line (text, limit, flag_format, line_flag)
      char const *text, *limit, *flag_format, *line_flag;
 {
-  if (!tab_expand_flag)
+  if (!tab_expand_flag) {
+#if 0
     fwrite (text, sizeof (char), limit - text, outfile);
+#else
+    char str;
+    str = *limit; // save
+    *(char *)limit = 0;
+    diff_puts (text);
+    *(char *)limit = str; // restore
+#endif
+  }
   else
     {
       register FILE *out = outfile;
@@ -530,15 +539,15 @@ output_1_line (text, limit, flag_format, line_flag)
 	      unsigned spaces = TAB_WIDTH - column % TAB_WIDTH;
 	      column += spaces;
 	      do
-		putc (' ', out);
+		diff_puts (" ");
 	      while (--spaces);
 	    }
 	    break;
 
 	  case '\r':
-	    putc (c, out);
+	    diff_puts ("\r");
 	    if (flag_format && t < limit && *t != '\n')
-	      fprintf (out, flag_format, line_flag);
+	      diff_printf (flag_format, line_flag);
 	    column = 0;
 	    break;
 
@@ -546,7 +555,7 @@ output_1_line (text, limit, flag_format, line_flag)
 	    if (column == 0)
 	      continue;
 	    column--;
-	    putc (c, out);
+	    diff_puts ("\b");
 	    break;
 
 	  default:
@@ -614,9 +623,9 @@ print_number_range (sepchar, file, a, b)
      In this case, we should print the line number before the range,
      which is B.  */
   if (trans_b > trans_a)
-    fprintf (outfile, "%d%c%d", trans_a, sepchar, trans_b);
+    diff_printf ("%d%c%d", trans_a, sepchar, trans_b);
   else
-    fprintf (outfile, "%d", trans_b);
+    diff_printf ("%d", trans_b);
 }
 
 /* Look at a hunk of edit script and report the range of lines in each file

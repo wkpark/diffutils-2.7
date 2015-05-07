@@ -25,10 +25,10 @@ noinst_HEADERS = diff.h system.h
 
 LDADD = libdiffutils.la
 
-cmp_SOURCES = cmp.c exit.c
-diff3_SOURCES = diff3.c exit.c
-sdiff_SOURCES = sdiff.c exit.c
-diff_SOURCES = diffmain.c exit.c
+cmp_SOURCES = cmp.c aux.c
+diff3_SOURCES = diff3.c aux.c
+sdiff_SOURCES = sdiff.c aux.c
+diff_SOURCES = diffmain.c aux.c
 
 NULL_DEVICE = /dev/null
 cmp_CPPFLAGS = -DNULL_DEVICE=\"$(NULL_DEVICE)\"
